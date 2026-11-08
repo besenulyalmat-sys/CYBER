@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="kk">
+<html lang="kk" data-theme="dark">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -43,6 +43,10 @@ label{display:block;font-weight:600;font-size:15px;color:var(--mute);margin-bott
 .mute{color:var(--mute);font-size:15px}
 .dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:var(--ok);margin-right:6px}.dot.off{background:var(--bad)}
 .err{color:var(--bad);font-weight:600;margin:8px 0}
+.tw{overflow-x:auto;border:2px solid var(--line);border-radius:12px;margin:8px 0 14px}table{border-collapse:collapse;width:100%;font-size:15px}th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--mute);font-size:13px;background:var(--s2)}tr:last-child td{border-bottom:0}
+select{font:inherit;width:100%;color:var(--ink);background:var(--surface);border:2px solid var(--line);border-radius:12px;padding:12px 10px;margin:6px 0 12px}
+.ms{display:flex;gap:10px;justify-content:space-between;align-items:center;text-align:left;width:100%;cursor:pointer;background:var(--surface);color:var(--ink);border:3px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;font:600 17px "Noto Sans",sans-serif}.ms.on{border-color:var(--air);background:var(--air-bg)}.ms b{color:var(--air);white-space:nowrap}
+.tmr{font:700 26px "Noto Sans Mono",monospace;color:var(--air)}.sec{margin:20px 0 8px;font:700 19px "Noto Serif",serif}
 </style>
 </head>
 <body>
@@ -55,36 +59,82 @@ var Q=new URLSearchParams(location.search),DB=(Q.get('db')||FB_URL||'').replace(
 var S={code:(Q.get('r')||'').trim(),nick:'',pid:'',cur:null,seen:0,sent:{},sc:null,ended:false,joined:false,err:'',bad:0,sig:'',busy:false};
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function api(p,m,b){var o={};if(m){o.method=m;o.body=JSON.stringify(b);}return fetch(DB+'/'+p+'.json',o).then(function(r){if(!r.ok)throw new Error(r.status);return r.json();});}
-function head(){return '<div class="top"><span class="dot'+(S.bad>2?' off':'')+'"></span><b>'+esc(S.nick||'Сабаққа қосылу')+'</b><span style="flex:1"></span>'+(S.sc?'<span>Ұпай: <b>'+S.sc.s+'</b>'+(S.sc.r?' · '+S.sc.r+'-орын':'')+'</span>':'')+'</div>';}
+function head(){return '<div class="top"><span class="dot'+(S.bad>2?' off':'')+'"></span><b>'+esc(S.nick||'Сабаққа қосылу')+'</b><span style="flex:1"></span>'+(S.sc&&!(S.pr&&S.pr.n>0)?'<span>Лекция: <b>'+S.sc.s+'</b>/100'+(S.sc.r?' · '+S.sc.r+'-орын':'')+'</span>':'')+'</div>';}
 function R(h){app.innerHTML=h;}
 function joinView(){R('<h1>Сабаққа қосылу</h1><p class="mute">Жүргізуші көрсеткен кодты енгізіп, есіміңізді жазыңыз.</p><label for="c">Код</label><input id="c" inputmode="numeric" maxlength="6" value="'+esc(S.code)+'" autocomplete="off"><label for="n">Есіміңіз немесе бүркеншік атыңыз</label><input id="n" maxlength="16" autocomplete="off"><p class="mute">Тек есім немесе бүркеншік ат жазыңыз, басқа жеке дерек енгізбеңіз. Деректер сабақ аяқталған соң жойылады.</p>'+(S.err?'<p class="err">'+esc(S.err)+'</p>':'')+'<button class="btn" id="go"'+(DB?'':' disabled')+'>Қосылу</button>'+(DB?'':'<p class="err">Дерекқор бапталмаған (FB_URL).</p>'));
  document.getElementById('go').onclick=join;document.getElementById('n').addEventListener('keydown',function(e){if(e.key==='Enter')join();});}
 function join(){var c=document.getElementById('c').value.trim(),n=document.getElementById('n').value.trim().slice(0,16);if(!/^\d{3,6}$/.test(c)){S.err='Кодты тексеріңіз.';S.code=c;return joinView();}if(!n){S.err='Есіміңізді жазыңыз.';S.code=c;return joinView();}
  S.code=c;api('rooms/'+c+'/live').then(function(l){if(!l){S.err='Бөлме табылмады. Кодты тексеріңіз.';return joinView();}
   return api('rooms/'+c+'/players').then(function(P){var names=P?Object.keys(P).map(function(k){return P[k].n;}):[],nn=n,i=2;while(names.indexOf(nn)>-1)nn=n+'·'+(i++);S.nick=nn;S.pid=Math.random().toString(36).slice(2,9);
-   return api('rooms/'+c+'/players/'+S.pid,'PUT',{n:nn,j:Date.now()}).then(function(){S.joined=true;S.err='';render(true);poll();});});}).catch(function(){S.err='Байланыс қатесі. Қайталап көріңіз.';joinView();});}
+   return api('rooms/'+c+'/players/'+S.pid,'PUT',{n:nn,j:Date.now()}).then(function(){S.joined=true;S.err='';try{history.replaceState(null,'','#p='+S.pid+'&n='+encodeURIComponent(S.nick));}catch(e){}render(true);poll();});});}).catch(function(){S.err='Байланыс қатесі. Қайталап көріңіз.';joinView();});}
 function submit(v){var cur=S.cur;if(!cur||S.sent[cur.id]!=null)return;var d=Date.now()-S.seen;S.sent[cur.id]=v;render(true);api('rooms/'+S.code+'/ans/'+cur.id+'/'+S.pid,'PUT',{v:v,d:d}).catch(function(){delete S.sent[cur.id];S.err='Жауап жіберілмеді, қайта басыңыз.';render(true);});}
-function render(force){var cur=S.cur,sg=[S.joined,S.ended,cur&&cur.id,cur&&cur.st,cur&&S.sent[cur.id]!=null,S.sc&&S.sc.s,S.sc&&S.sc.r,S.bad>2,S.err].join('|');if(!force&&sg===S.sig)return;S.sig=sg;
+function render(force){var cur=S.cur,sg=[S.pr&&S.pr.n,S.pr&&S.pr.open,S.pr&&S.pr.fin,!!S.pp,!!S.prs,S.joined,S.ended,cur&&cur.id,cur&&cur.st,cur&&S.sent[cur.id]!=null,S.sc&&S.sc.s,S.sc&&S.sc.r,S.bad>2,S.err].join('|');if(!force&&sg===S.sig)return;S.sig=sg;
+ if(S.pr&&S.joined&&!S.ended&&!S.kicked){return prView();}
+ if(S.kicked){R(head()+'<h2>Сіз сабақтан шығарылдыңыз</h2><div class="msg no">Жүргізуші сізді тізімнен алып тастады. Қайта қосылу үшін төмендегі түймені басып, атыңызды енгізіңіз.</div><button class="btn" id="rj" style="margin-top:14px">Қайта қосылу</button>');document.getElementById('rj').onclick=function(){try{history.replaceState(null,'','#');}catch(e){}S.kicked=false;S.ended=false;S.joined=false;S.pid='';S.cur=null;S.sc=null;S.sig='';joinView();poll;};return;}
  if(S.ended){return R(head()+'<h2>Сабақ аяқталды</h2><div class="msg in">Қатысқаның үшін рақмет!'+(S.sc?'<div class="big">'+S.sc.s+' ұпай</div>'+(S.sc.r?'<p style="text-align:center">'+S.sc.r+'-орын</p>':''):'')+'</div>');}
  if(!cur)return R(head()+'<h2>Күтіңіз...</h2><div class="msg in">Сіз қосылдыңыз. Жүргізуші сұрақты жібергенше күтіңіз. Назарыңыз экранда болсын.</div>');
  var sent=S.sent[cur.id],h=head()+'<h2>'+esc(cur.q)+'</h2>',rev=cur.st==='reveal',lock=sent!=null||cur.st!=='open';
  if(cur.type==='choice'){(cur.o||[]).forEach(function(o,k){var cls='opt';if(rev&&cur.c!=null){if([].concat(cur.c).indexOf(k)>-1)cls+=' ok';else if(sent===k)cls+=' no';}else if(sent===k)cls+=' on';h+='<button class="'+cls+'" data-k="'+k+'" '+(lock?'disabled':'')+'><i>'+L[k]+'</i>'+esc(o)+'</button>';});}
  else if(cur.type==='nums'){(cur.f||[]).forEach(function(f,k){h+='<label for="f'+k+'">'+esc(f)+'</label><input id="f'+k+'" type="number" min="0" inputmode="numeric" '+(lock?'disabled value="'+esc(sent&&sent[k])+'"':'')+'>';});if(!lock)h+='<button class="btn" id="sn">Жіберу</button>';}
- else if(cur.type==='scale'){h+='<div class="sc">'+[1,2,3,4,5].map(function(n){return '<button data-k="'+n+'" class="'+(sent===n?'on':'')+'" '+(lock?'disabled':'')+'>'+n+'</button>';}).join('')+'</div><p class="mute" style="margin-top:8px">'+esc(cur.lab||'1: мүлде түсінбедім, 5: толық түсіндім')+'</p>';}
+ else if(cur.type==='scale'||cur.type==='rate'){h+='<div class="sc">'+[1,2,3,4,5].map(function(n){return '<button data-k="'+n+'" class="'+(sent===n?'on':'')+'" '+(lock?'disabled':'')+'>'+(cur.type==='rate'?n+'★':n)+'</button>';}).join('')+'</div><p class="mute" style="margin-top:8px">'+esc(cur.lab||'1: мүлде түсінбедім, 5: толық түсіндім')+'</p>';}
  else if(cur.type==='text'){h+=lock?'<div class="card">'+esc(sent)+'</div>':'<textarea id="tx" maxlength="140" placeholder="Жауабыңды жаз..."></textarea><button class="btn" id="st">Жіберу</button>';}
  if(S.err)h+='<p class="err">'+esc(S.err)+'</p>';
  if(sent!=null&&!rev)h+='<div class="msg in" style="margin-top:6px">Жауап қабылданды. Нәтижені күтіңіз.</div>';
  if(sent==null&&cur.st!=='open')h+='<div class="msg no" style="margin-top:6px">Жауап қабылдау жабылды.</div>';
- if(rev&&cur.type==='choice'&&cur.c!=null){var cc=[].concat(cur.c),ok=cc.indexOf(sent)>-1,d=S.sc&&S.sc.d;h+='<div class="msg '+(ok?'ok':'no')+'" style="margin-top:6px"><b>'+(sent==null?'Жауап берілмеді.':ok?'Дұрыс!'+(d?' +'+d+' ұпай':''):'Қате.')+'</b>'+(ok?'':'<br>Дұрыс жауап: '+cc.map(function(k){return L[k]+'. '+esc((cur.o||[])[k]);}).join(' немесе '))+(cur.w?'<br><span class="mute" style="color:inherit">'+esc(cur.w)+'</span>':'')+'</div>';}
+ if(rev&&cur.type==='choice'&&cur.c!=null){var cc=[].concat(cur.c),ok=cc.indexOf(sent)>-1,d=S.sc&&S.sc.d;h+='<div class="msg '+(ok?'ok':'no')+'" style="margin-top:6px"><b>'+(sent==null?'Жауап берілмеді.':ok?'Дұрыс!':'Қате.')+'</b>'+(ok?'':'<br>Дұрыс жауап: '+cc.map(function(k){return L[k]+'. '+esc((cur.o||[])[k]);}).join(' немесе '))+(cur.w?'<br><span class="mute" style="color:inherit">'+esc(cur.w)+'</span>':'')+'</div>';}
  else if(rev&&sent!=null)h+='<div class="msg ok" style="margin-top:6px">Рақмет! Жауабың есепке алынды.</div>';
  R(h);
  $$('.opt,.sc button').forEach(function(b){b.onclick=function(){submit(+b.dataset.k);};});
  var sn=document.getElementById('sn');if(sn)sn.onclick=function(){var v=(cur.f||[]).map(function(_,k){return +document.getElementById('f'+k).value||0;});submit(v);};
  var st=document.getElementById('st');if(st)st.onclick=function(){var v=document.getElementById('tx').value.trim().slice(0,140);if(v)submit(v);};}
 function $$(s){return [].slice.call(document.querySelectorAll(s));}
-function poll(){if(S.ended)return;Promise.all([api('rooms/'+S.code+'/live'),api('rooms/'+S.code+'/sc/'+S.pid)]).then(function(r){S.bad=0;var l=r[0];if(!l){S.ended=true;return render(true);}
-  var c=l.cur||null;if(c&&(!S.cur||S.cur.id!==c.id)){S.seen=Date.now();S.err='';}if(!c)S.cur=null;else S.cur=c;S.sc=r[1];render(false);}).catch(function(){S.bad++;render(false);}).then(function(){setTimeout(poll,1200);});}
-S.code?joinView():joinView();
+function poll(){if(S.ended)return;Promise.all([api('rooms/'+S.code+'/live'),api('rooms/'+S.code+'/sc/'+S.pid),api('rooms/'+S.code+'/players/'+S.pid+'/n')]).then(function(r){S.bad=0;var l=r[0];if(!l){S.ended=true;return render(true);}if(r[2]==null){S.kicked=true;S.ended=true;return render(true);}S.hb=(S.hb||0)+1;if(S.hb%4===1)api('rooms/'+S.code+'/players/'+S.pid+'/h','PUT',Date.now()).catch(function(){});
+  S.pr=l.pr||null;if(S.pr)prSync();var c=l.cur||null;if(c&&(!S.cur||S.cur.id!==c.id)){S.seen=Date.now();S.err='';}if(!c)S.cur=null;else S.cur=c;S.sc=r[1];render(false);}).catch(function(){S.bad++;render(false);}).then(function(){setTimeout(poll,1500);});}
+
+/* ===== PRACTICE (student) ===== */
+var TM=['','1. Кейс: оқиғаны тергеу','2. Терминдер','3. Тест','4. Қатені тап','5. Өз сөзіммен'],MX=[0,30,15,20,15,20];
+S.A={1:{q1:-1,q2:[],q3:[0,0,0,0],q4:[]},2:[-1,-1,-1,-1,-1,-1],3:[-1,-1,-1,-1,-1,-1,-1,-1,-1,-1],4:[-1,-1,-1],5:['','']};S.sub={};S.pn=0;S.tseen=0;
+function arr(x,len,d){var a=[],i;for(i=0;i<len;i++)a.push(d);if(x&&typeof x==='object')Object.keys(x).forEach(function(k){if(+k<len)a[+k]=x[k];});return a;}
+function norm(n,v){if(n===1){v=v||{};return {q1:v.q1==null?-1:v.q1,q2:v.q2?Object.keys(v.q2).map(function(k){return v.q2[k];}):[],q3:arr(v.q3,4,0),q4:v.q4?Object.keys(v.q4).map(function(k){return v.q4[k];}):[]};}if(n===2)return arr(v,6,-1);if(n===3)return arr(v,10,-1);if(n===4)return arr(v,3,-1);var t=arr(v,2,'');return t.map(function(x){return x==null?'':x;});}
+function saveAns(n,f){return api('rooms/'+S.code+'/pa/'+S.pid+'/'+n,'PUT',{v:S.A[n],f:f?1:0,t:Date.now()});}
+function finalSave(n){if(S.sub[n])return;S.sub[n]=1;saveAns(n,1).catch(function(){S.sub[n]=0;});if(S.pr&&S.pr.n===n)prView();}
+function prSync(){var pr=S.pr,n=pr.n;
+ if(!S.pp&&!S.ppL){S.ppL=1;api('rooms/'+S.code+'/prac/'+S.pid).then(function(x){S.pp=x;S.ppL=0;render(true);}).catch(function(){S.ppL=0;});}
+ if(n>0&&n<6&&S.pn!==n){S.pn=n;S.tseen=Date.now();api('rooms/'+S.code+'/pa/'+S.pid+'/'+n).then(function(x){if(x&&x.v!=null){S.A[n]=norm(n,x.v);if(x.f)S.sub[n]=1;render(true);}}).catch(function(){});}
+ if(pr.fin&&!S.prs&&!S.prsL){S.prsL=1;api('rooms/'+S.code+'/prs/'+S.pid).then(function(x){S.prs=x;S.prsL=0;render(true);}).catch(function(){S.prsL=0;});}
+ if(n>0&&n<6&&!pr.open&&!S.sub[n])finalSave(n);}
+setInterval(function(){var pr=S.pr;if(!pr||!(pr.n>0&&pr.n<6)||!pr.open||S.sub[pr.n])return;saveAns(pr.n,0).catch(function(){});},8000);
+setInterval(function(){var el=document.getElementById('prt'),pr=S.pr;if(!el||!pr||!pr.open)return;var left=pr.dur-Math.floor((Date.now()-S.tseen)/1000);el.textContent=('0'+Math.floor(Math.max(0,left)/60)).slice(-2)+':'+('0'+Math.max(0,left)%60).slice(-2);if(left<=0&&!S.sub[pr.n])finalSave(pr.n);},1000);
+function prView(){var pr=S.pr,n=pr.n,P=S.pp,h=head(),y=window.scrollY;
+ function put(x){R(x);window.scrollTo(0,y);}
+ if(pr.fin){var t=S.prs;return put(h+'<h2>Практика нәтижесі</h2>'+(t?'<div class="msg ok"><div class="big">'+t.tot+' / 100</div>'+[1,2,3,4,5].map(function(i){return '<div>'+TM[i]+': <b>'+(t.t[i-1]||0)+'</b> / '+MX[i]+'</div>';}).join('')+'</div>'+(S.sc?'<p class="mute" style="margin-top:12px">Лекция балы: '+S.sc.s+' / 100</p>':''):'<div class="msg in">Нәтиже жүктелуде...</div>'));}
+ if(!P)return put(h+'<h2>Практика</h2><div class="msg in">Тапсырмалар жүктелуде...</div>');
+ if(n===0)return put(h+'<h2>Практика басталады</h2><div class="msg in">Сізге жеке кейс берілді. Жүргізуші тапсырманы ашқанша күтіңіз. Назарыңыз экранда болсын.</div>');
+ var open=pr.open&&!S.sub[n],lock=!open,A=S.A[n],left=pr.dur-Math.floor((Date.now()-S.tseen)/1000);
+ h+='<h2>'+TM[n]+'</h2><div class="top"><span class="tmr" id="prt">'+('0'+Math.floor(Math.max(0,left)/60)).slice(-2)+':'+('0'+Math.max(0,left)%60).slice(-2)+'</span><span style="flex:1"></span><span>'+(S.sub[n]?'Тапсырылды':pr.open?'Жүріп жатыр':'Жабылды')+'</span></div>';
+ var dis=lock?' disabled':'';
+ if(n===1){var C=P.cs;h+='<div class="card"><b>'+esc(C.n)+'</b><p style="margin-top:8px">'+esc(C.s)+'</p><div class="tw"><table><thead><tr>'+C.h.map(function(x){return '<th>'+esc(x)+'</th>';}).join('')+'</tr></thead><tbody>'+C.r.map(function(r){return '<tr>'+r.map(function(x){return '<td>'+esc(x)+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div></div>';
+  h+='<div class="sec">1. '+esc(C.q1.q)+'</div>'+C.q1.o.map(function(o,i){return '<button class="opt'+(A.q1===i?' on':'')+'" data-pr="q1" data-v="'+i+'"'+dis+'><i>'+L[i]+'</i>'+esc(o)+'</button>';}).join('');
+  h+='<div class="sec">2. '+esc(C.q2.q)+'</div>'+C.q2.o.map(function(o,i){return '<button class="opt'+(A.q2.indexOf(i)>-1?' on':'')+'" data-pr="q2" data-v="'+i+'"'+dis+'><i>'+(A.q2.indexOf(i)>-1?'✓':'□')+'</i>'+esc(o)+'</button>';}).join('');
+  h+='<div class="sec">3. Дұрыс реттілікпен нөмірле (1: бірінші)</div>'+C.q3.map(function(o,i){return '<div class="card" style="padding:12px 14px">'+esc(o)+'<select data-pr="q3" data-i="'+i+'"'+dis+'><option value="0">таңда...</option>'+[1,2,3,4].map(function(k){return '<option value="'+k+'"'+(A.q3[i]===k?' selected':'')+'>'+k+'</option>';}).join('')+'</select></div>';}).join('');
+  var cost=A.q4.reduce(function(s,i){return s+(C.ms[i]?C.ms[i][1]:0);},0);
+  h+='<div class="sec">4. Екі-үш шара таңда (бюджет: '+cost+' / 3 ұпай)</div>'+C.ms.map(function(m,i){return '<button class="ms'+(A.q4.indexOf(i)>-1?' on':'')+'" data-pr="q4" data-v="'+i+'"'+dis+'><span>'+esc(m[0])+'</span><b>'+m[1]+' ұп.</b></button>';}).join('')+'<p class="mute">Қызметті тоқтатуға болмайды: ең тиімді, бірақ бизнесті жаппайтын шараларды таңда.</p>';}
+ else if(n===2){h+='<p class="mute">Әр терминге сай мағынаны таңда. Мағыналардың бәрі міндетті түрде қолданылмайды.</p>'+P.tm.t.map(function(t,k){return '<label>'+esc(t)+'</label><select data-pr="tm" data-i="'+k+'"'+dis+'><option value="-1">таңда...</option>'+P.tm.d.map(function(d,j){return '<option value="'+j+'"'+(A[k]===j?' selected':'')+'>'+esc(d)+'</option>';}).join('')+'</select>';}).join('');}
+ else if(n===3){h+=P.ts.map(function(q,i){return '<div class="sec">'+(i+1)+'. '+esc(q.q)+'</div>'+q.o.map(function(o,j){return '<button class="opt'+(A[i]===j?' on':'')+'" data-pr="ts" data-i="'+i+'" data-v="'+j+'"'+dis+'><i>'+L[j]+'</i>'+esc(o)+'</button>';}).join('');}).join('');}
+ else if(n===4){h+='<p class="mute">Әр кестеде баптаудың бірі қауіпті. Соны таңда.</p>'+P.cf.map(function(rows,i){return '<div class="sec">'+(i+1)+'-кесте</div>'+rows.map(function(r,j){return '<button class="opt'+(A[i]===j?' on':'')+'" data-pr="cf" data-i="'+i+'" data-v="'+j+'"'+dis+'><span><b>'+esc(r[0])+':</b> '+esc(r[1])+'</span></button>';}).join('');}).join('');}
+ else{var C5=P.cs;h+='<div class="card"><b>'+esc(C5.n)+'</b><p style="margin-top:6px">'+esc(C5.s)+'</p></div>'+C5.op.map(function(q,i){return '<div class="sec">'+(i+1)+'. '+esc(q)+'</div><textarea data-pr="own" data-i="'+i+'" maxlength="600"'+dis+' placeholder="2–3 сөйлеммен жаз...">'+esc(A[i]||'')+'</textarea>';}).join('');}
+ if(S.err)h+='<p class="err">'+esc(S.err)+'</p>';
+ h+=open?'<button class="btn" data-pr="sub" style="margin-top:14px">Тапсыру</button>':'<div class="msg '+(S.sub[n]?'ok':'in')+'" style="margin-top:14px">'+(S.sub[n]?'Жауабың қабылданды. Келесі тапсырманы күтіңіз.':'Жауап қабылдау жабылды.')+'</div>';
+ put(h);}
+app.addEventListener('click',function(e){var b=e.target.closest('button[data-pr]');if(!b||b.disabled||!S.pr)return;var k=b.dataset.pr,v=+b.dataset.v,i=+b.dataset.i,n=S.pr.n,A=S.A[n];S.err='';
+ if(k==='sub'){if(confirm('Тапсырманы тапсырамыз ба? Кейін өзгерту мүмкін емес.'))finalSave(n);return;}
+ if(k==='q1')A.q1=v;else if(k==='q2'){var ix=A.q2.indexOf(v);if(ix>-1)A.q2.splice(ix,1);else A.q2.push(v);}
+ else if(k==='q4'){var j=A.q4.indexOf(v);if(j>-1)A.q4.splice(j,1);else{var cost=A.q4.reduce(function(s,x){return s+S.pp.cs.ms[x][1];},0)+S.pp.cs.ms[v][1];if(cost>3){S.err='Бюджет жеткіліксіз (максимум 3 ұпай).';}else A.q4.push(v);}}
+ else if(k==='ts'||k==='cf')A[i]=v;prView();});
+app.addEventListener('change',function(e){var t=e.target,k=t.dataset&&t.dataset.pr;if(!k||!S.pr)return;if(k==='q3')S.A[1].q3[+t.dataset.i]=+t.value;else if(k==='tm')S.A[2][+t.dataset.i]=+t.value;else return;prView();});
+app.addEventListener('input',function(e){var t=e.target;if(t.dataset&&t.dataset.pr==='own')S.A[5][+t.dataset.i]=t.value.slice(0,600);});
+
+(function(){var m=location.hash.match(/p=([^&]+)&n=(.*)/);if(S.code&&DB&&m){api('rooms/'+S.code+'/players/'+m[1]+'/n').then(function(n){if(n){S.pid=m[1];S.nick=decodeURIComponent(m[2]);S.joined=true;render(true);poll();}else joinView();}).catch(joinView);}else joinView();})();
 })();
 </script>
 </body>
