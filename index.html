@@ -609,7 +609,7 @@ else $$('.rv').forEach(function(e){e.classList.add('in');});
 <script>
 (function(){
 /* Firebase Realtime Database URL (бос болса, демо режим іске қосылады) */
-var FB_URL='';
+var FB_URL='https://kl-ca17a-default-rtdb.europe-west1.firebasedatabase.app/';
 var P=new URLSearchParams(location.search),FB=(P.get('db')||FB_URL||'').replace(/\/$/,'');
 function $(s,r){return (r||document).querySelector(s);}function $$(s,r){return [].slice.call((r||document).querySelectorAll(s));}
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
